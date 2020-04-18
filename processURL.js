@@ -1,0 +1,85 @@
+const fs = require('fs');
+const path = require('path');
+
+/**
+ * 
+ * @param {string} cwd
+ * @param {string} url
+ * @param {{ login : string, password : string }|false} auth
+ * @returns { { e : 'output' | 'access' | 'authRequest' | 'notFound' | 'dirTree', msg : string } }
+ */
+function processURL (cwd, url, auth) {
+    let config = require('./defaultConfig.json');
+    if (!url.startsWith(cwd)) return {
+        e: 'access',
+        msg: 'Attempted to escape CWD'
+    };
+    url = url.replace(cwd, '~').split('/').map(x => x == '~' ? cwd : x);
+    console.log('Full url:', url);
+    for (let i = 0; i < url.length; i++) {
+        let currentPath = url.slice(0, i+1).join('/');
+        console.log('Processing', currentPath);
+        if (!fs.existsSync(currentPath)) return {
+            e: 'notFound'
+        };
+        //if (config.redirect && config.redirect[i]) return processURL(cwd, config.redirect[i].startsWith('~/') ? path.join(cwd, config.redirect[i].replace('~/', '')) : path.join(currentPath, config.redirect[i]));
+        if (fs.statSync(currentPath).isDirectory()) {
+            let thisCfg = connectConfig(currentPath);
+            if (thisCfg) {
+                for (let i in thisCfg) {
+                    if (url[i] == 'auth' && config.auth) continue;
+                    else if (url[i] == 'server' && currentPath != cwd) continue;
+                    else if (thisCfg[i] === null) config[i] = null;
+                    else if (typeof thisCfg[i] == 'object' && !(thisCfg[i] instanceof Array)) {
+                        if (!config[i]) config[i] = {};
+                        for (let j in thisCfg[i]) config[i][j] = thisCfg[i][j];
+                    }
+                    else config[i] = thisCfg[i];
+                }
+                config.redirect = thisCfg.redirect;
+                config.mime = thisCfg.mime;
+                console.log('Custom config connected', thisCfg);
+                console.log('Working with config', config);
+            }
+            if (config.auth) {
+                console.log('Authrererre', config.auth);
+                if (!auth || !config.auth.some(x => x.login == auth.login && x.password == auth.password)) return {
+                    e: 'authRequest'
+                }
+            }
+            if (!url[i+1]) {
+                if (config.showDirectoryTree) return {
+                    e: 'dirTree',
+                    url: currentPath
+                };
+                else return {
+                    e: 'access'
+                };
+            }
+        }
+        else {
+            if (url[i] == '.ffserve' && !config.configAccess) return {
+                e: 'access'
+            }
+            else return {
+                e: 'output',
+                url: currentPath,
+                mime: config.mime && config.mime[url[i]] ? config.mime[url[i]] : undefined
+            }
+            break;
+        }
+    }
+}
+module.exports = processURL;
+
+function connectConfig(url) {
+    if (fs.existsSync(path.join(url, '.ffserve'))) {
+        try {
+            return JSON.parse(fs.readFileSync(path.join(url, '.ffserve')).toString());
+        }
+        catch (_e) {
+            return false;
+        }
+    }
+    else return false;
+}
