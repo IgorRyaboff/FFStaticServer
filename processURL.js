@@ -9,6 +9,7 @@ const path = require('path');
  * @returns { { e : 'output' | 'access' | 'authRequest' | 'notFound' | 'dirTree' | 'externalRedirect', msg : string } }
  */
 function processURL (cwd, url, auth) {
+    console.log(url);
     let config = JSON.parse(fs.readFileSync(path.join(path.dirname(require.main.filename), '/defaultConfig.json')).toString());
     url = url.replace(cwd, '~').split('/').map(x => x == '~' ? cwd : x);
     console.log('Started processing URL', url);

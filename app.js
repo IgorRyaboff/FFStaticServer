@@ -4,11 +4,13 @@ const path = require('path');
 const chalk = require('chalk');
 const mime = require('mime-types').lookup;
 const processURL = require('./processURL');
+const dirTree = require('./dirTree');
 
-const cwd = path.resolve(process.cwd()).split('\\').join('/');
+var cwd = path.resolve(process.cwd()).split('\\').join('/');
+if (cwd[cwd.length-1] == '/') cwd = cwd.substring(0, cwd.length-1);
 
 var server = http.createServer((req, res) => {
-    let url = path.join(cwd, (req.url.substr(req.url.indexOf('/')))).split('\\').join('/');
+    let url = path.join(cwd, req.url).split('\\').join('/').split('%20').join(' ');
     let auth = null;
     if (req.headers.authorization && /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/.test(req.headers.authorization.split(' ')[1])) {
         auth = Buffer.from(req.headers.authorization.split(' ')[1], 'base64').toString('ascii').split(':');
@@ -49,10 +51,13 @@ var server = http.createServer((req, res) => {
             break;
         }
         case 'dirTree': {
-            fs.readdir(result.url, (err, files) => {
-                if (err) complete(500, err.message.split(cwd).join('~'), err.message);
-                else complete(200, files.filter(x => x != '.ffserve').join('<br>'), 'Directory tree shown');
-            });
+            try {
+                res.setHeader('Content-type', 'text/html');
+                complete(200, dirTree(cwd, result.url, result.showConfig, req.headers.host), 'Directory tree shown');
+            }
+            catch (err) {
+                complete(500, err.message.split(cwd).join('~'), err.message);
+            }
             break;
         }
 		case 'externalRedirect': {
