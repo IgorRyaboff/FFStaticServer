@@ -11,11 +11,12 @@ const path = require('path');
 function processURL (cwd, url, auth) {
     console.log(url);
     let config = JSON.parse(fs.readFileSync(path.join(path.dirname(require.main.filename), '/defaultConfig.json')).toString());
-    url = url.replace(cwd, '~').split('/').map(x => x == '~' ? cwd : x);
+    url = url.split('\\').join('/').replace(cwd, '~').split('/').map(x => x == '~' ? cwd : x);
     console.log('Started processing URL', url);
     if (url[0] != cwd) return {
         e: 'access',
-        msg: 'Attempted to escape CWD'
+        msg: 'Attempted to escape CWD',
+        url: config.errorPages && config.errorPages.access ? path.join(currentPath, config.errorPages.access) : undefined
     };
     for (let i = 0; i < url.length; i++) {
         let currentPath = url.slice(0, i+1).join('/');
@@ -29,7 +30,8 @@ function processURL (cwd, url, auth) {
 			else return processURL(cwd, path.join(cwd, config.redirect[url[i]]).split('\\').join('/'));
 		}
         if (!fs.existsSync(currentPath)) return {
-            e: 'notFound'
+            e: 'notFound',
+            url: config.errorPages && config.errorPages.notFound ? path.join(currentPath, config.errorPages.notFound) : undefined
         };
         if (fs.statSync(currentPath).isDirectory()) {
             let thisCfg = connectConfig(currentPath);
@@ -61,14 +63,16 @@ function processURL (cwd, url, auth) {
                     url: currentPath
                 };
                 else return {
-                    e: 'access'
+                    e: 'access',
+                    url: config.errorPages && config.errorPages.access ? path.join(currentPath, config.errorPages.access) : undefined
                 };
             }
         }
         else {
             if (url[i] == '.ffserve' && !config.configAccess) return {
                 e: 'notFound',
-				msg: 'Attempted to access .ffserve file'
+				msg: 'Attempted to access .ffserve file',
+                url: config.errorPages && config.errorPages.notFound ? path.join(currentPath, config.errorPages.notFound) : undefined
             }
             else return {
                 e: 'output',

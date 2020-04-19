@@ -20,7 +20,21 @@ var server = http.createServer((req, res) => {
         };
         console.log('Auth:', auth);
     }
-    let complete = (code, data, msg) => {
+    let complete = (code, data, msg, errorPage) => {
+        if (errorPage) {
+            console.log('Using custom error page', errorPage);
+            let errPageResult = processURL(cwd, errorPage, auth);
+            if (errPageResult.e == 'output') {
+                console.log('Outputting error page', errorPage);
+                res.setHeader('Content-Type', errPageResult.mime ? errPageResult.mime : mime(errPageResult.url) || 'application/octet-stream');
+                fs.readFile(errPageResult.url, 'utf-8', (err, buf) => {
+                    if (err) complete(500, err.message.split(cwd).join('~'), err.message);
+                    else complete(code, buf);
+                });
+                return;
+            }
+            else console.log('Cannot get custom error page:', errPageResult.e);
+        }
         res.statusCode = +code;
         res.end(data);
 		const successCodes = [ 200, 301, 304 ];
@@ -30,11 +44,11 @@ var server = http.createServer((req, res) => {
     console.log('Got result code', result.e);
     switch (result.e) {
         case 'access': {
-            complete(403, undefined, result.msg || undefined);
+            complete(403, undefined, result.msg || undefined, result.url);
             break;
         }
         case 'notFound': {
-            complete(404, undefined, result.msg || undefined);
+            complete(404, undefined, result.msg || undefined, result.url);
             break;
         }
         case 'authRequest': {
