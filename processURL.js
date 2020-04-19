@@ -64,6 +64,10 @@ function processURL (cwd, url, auth) {
                     e: 'authRequest'
                 }
             }
+            if (!config.access) return {
+                e: 'access',
+                msg: '.ffserve > access is false'
+            }
             if (!url[i+1]) {
                 if (config.showDirectoryTree) return {
                     e: 'dirTree',

@@ -3,7 +3,15 @@
     "auth": false,
     "configAccess": false,
     "redirect": false,
+    "access": true,
     "server": {
-        "port": 80
+        "httpPort": 80,
+        "https": {
+            "allowInsecureRequests": false,
+            "port": 443,
+            "key": "/etc/letsencrypt/archive/example.com/privkey1.pem",
+            "cert": "/etc/letsencrypt/archive/example.com/fullchain1.pem",
+            "ca": "/etc/letsencrypt/archive/example.com/chain1.pem"
+        }
     }
 }

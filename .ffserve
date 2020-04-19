@@ -1,8 +1,8 @@
 {
-    "errorPages": {
-        "access": "403.htm"
-    },
     "redirect": {
         "1": "1"
+    },
+    "server": {
+        "https": null
     }
 }

@@ -1,4 +1,5 @@
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const chalk = require('chalk');
@@ -17,7 +18,48 @@ if (fs.existsSync('./.ffserve')) {
     catch (_e) {}
 }
 
-var server = http.createServer((req, res) => {
+//Checking for sConfig errors
+if (isNaN(sConfig.httpPort)) throw Error('Incorrect config: server.httpPort should be number');
+if (sConfig.https) {
+    if (isNaN(sConfig.https.port)) throw Error('Incorrect config: server.https.port should be number');
+    try {
+        fs.watchFile(sConfig.https.key, () => initHTTPSServer());
+        sConfig.https.key = fs.readFileSync(sConfig.https.key);
+        sConfig.https.cert = fs.readFileSync(sConfig.https.cert);
+        sConfig.https.ca = fs.readFileSync(sConfig.https.ca);
+    }
+    catch (e) {
+        throw Error('Incorrect config: Error loading SSL information: ' + e.message);
+    }
+}
+/**
+ * @type {https.Server}
+ */
+var httpsServer = null;
+if (sConfig.https) initHTTPSServer();
+function initHTTPSServer() {
+    if (httpsServer) httpsServer.close();
+    httpsServer = https.createServer({
+        key: sConfig.https.key,
+        cert: sConfig.https.cert,
+        ca: sConfig.https.ca
+    }, processRequest).listen(sConfig.https.port);
+    console.log('Started HTTPS server');
+}
+
+http.createServer((rq, rp) => {
+    if (!sConfig.https || sConfig.https.allowInsecureRequests) processRequest(rq, rp);
+    else {
+        rp.writeHead(301, { "Location": "https://" + rq.headers['host'] + rq.url }).end();
+    }
+}).listen(sConfig.httpPort);
+
+/**
+ * 
+ * @param {http.IncomingMessage} req 
+ * @param {http.ServerResponse} res 
+ */
+function processRequest(req, res) {
     let url = path.join(cwd, req.url).split('\\').join('/').split('%20').join(' ');
     let auth = null;
     if (req.headers.authorization && /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/.test(req.headers.authorization.split(' ')[1])) {
@@ -96,6 +138,9 @@ var server = http.createServer((req, res) => {
             break;
         }
     }
-}).listen(sConfig.port);
+}
+
+
 console.log('FFServe started. Current working directory:', cwd);
-console.log('Port', sConfig.port);
+console.log('HTTP port: ' + sConfig.httpPort);
+sConfig.https ? console.log('HTTPS port: ' + sConfig.https.port) : false;
