@@ -57,7 +57,7 @@ function processURL (cwd, url, auth) {
                 config.redirect = thisCfg.redirect;
                 config.mime = thisCfg.mime;
                 console.log('Custom config connected', thisCfg);
-                console.log('Working with config', config);
+                //console.log('Working with config', config);
             }
             if (config.auth) {
                 if (!auth || !config.auth.some(x => x.login == auth.login && x.password == auth.password)) return {

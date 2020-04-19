@@ -2,5 +2,8 @@
     "showDirectoryTree": false,
     "auth": false,
     "configAccess": false,
-    "redirect": false
+    "redirect": false,
+    "server": {
+        "port": 80
+    }
 }

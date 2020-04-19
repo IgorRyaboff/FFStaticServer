@@ -8,6 +8,14 @@ const dirTree = require('./dirTree');
 
 var cwd = path.resolve(process.cwd()).split('\\').join('/');
 if (cwd[cwd.length-1] == '/') cwd = cwd.substring(0, cwd.length-1);
+var sConfig = require('./defaultConfig.json').server;
+if (fs.existsSync('./.ffserve')) {
+    try {
+        let cfg = JSON.parse(fs.readFileSync('./.ffserve').toString()).server;
+        if (cfg) for (let i in cfg) sConfig[i] = cfg[i];
+    }
+    catch (_e) {}
+}
 
 var server = http.createServer((req, res) => {
     let url = path.join(cwd, req.url).split('\\').join('/').split('%20').join(' ');
@@ -88,5 +96,6 @@ var server = http.createServer((req, res) => {
             break;
         }
     }
-}).listen(80);
-console.log('Listening on port 80 for directory ' + cwd);
+}).listen(sConfig.port);
+console.log('FFServe started. Current working directory:', cwd);
+console.log('Port', sConfig.port);
