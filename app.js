@@ -78,7 +78,11 @@ var server = http.createServer((req, res) => {
 			res.setHeader('Location', result.url);
 			complete(301, undefined, 'HTTP redirect to ' + result.url);
 			break;
-		}
+        }
+        case 'internalError': {
+            complete(500, undefined, result.msg || undefined, result.url);
+            break;
+        }
         default: {
             complete(500, undefined, 'Unknown result.e: ' + result.e);
             break;

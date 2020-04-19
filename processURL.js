@@ -6,7 +6,7 @@ const path = require('path');
  * @param {string} cwd
  * @param {string} url
  * @param {{ login : string, password : string }|false} auth
- * @returns { { e : 'output' | 'access' | 'authRequest' | 'notFound' | 'dirTree' | 'externalRedirect', msg : string } }
+ * @returns { { e : 'output' | 'access' | 'authRequest' | 'notFound' | 'dirTree' | 'externalRedirect' | 'internalError', msg : string } }
  */
 function processURL (cwd, url, auth) {
     console.log(url);
@@ -22,12 +22,20 @@ function processURL (cwd, url, auth) {
         let currentPath = url.slice(0, i+1).join('/');
         console.log('Processing', currentPath);
         if (config.redirect && config.redirect[url[i]]) {
-			let to = config.redirect[url[i]];
+            let to = config.redirect[url[i]];
 			if (to.startsWith('http://') || to.startsWith('https://')) return {
 				e: 'externalRedirect',
 				url: to
 			};
-			else return processURL(cwd, path.join(cwd, config.redirect[url[i]]).split('\\').join('/'));
+			else {
+                let newURL = path.join(cwd, config.redirect[url[i]]).split('\\').join('/');
+                if (newURL == currentPath) return {
+                    e: 'internalError',
+                    msg: 'Invalid config: recursive redirect at ' + newURL,
+                    url: config.errorPages && config.errorPages.internalError ? path.join(currentPath, config.errorPages.internalError) : undefined
+                }
+                else return processURL(cwd, path.join(newURL).split('\\').join('/'));
+            }
 		}
         if (!fs.existsSync(currentPath)) return {
             e: 'notFound',
@@ -52,7 +60,6 @@ function processURL (cwd, url, auth) {
                 console.log('Working with config', config);
             }
             if (config.auth) {
-                console.log('Authrererre', config.auth);
                 if (!auth || !config.auth.some(x => x.login == auth.login && x.password == auth.password)) return {
                     e: 'authRequest'
                 }
