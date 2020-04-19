@@ -21,17 +21,18 @@ var server = http.createServer((req, res) => {
     let complete = (code, data, msg) => {
         res.statusCode = +code;
         res.end(data);
-        console.log(code == 200 || code == 304 ? chalk.green(code) : chalk.red(code), `${url.replace(cwd, '~')}${msg ? ` (${msg})` : ''}`);
+		const successCodes = [ 200, 301, 304 ];
+        console.log(successCodes.indexOf(code) != -1 ? chalk.green(code) : chalk.red(code), `${url.replace(cwd, '~')}${msg ? ` (${msg})` : ''}`);
     };
     let result = processURL(cwd, url, auth);
     console.log('Got result code', result.e);
     switch (result.e) {
         case 'access': {
-            complete(403);
+            complete(403, undefined, result.msg || undefined);
             break;
         }
         case 'notFound': {
-            complete(404);
+            complete(404, undefined, result.msg || undefined);
             break;
         }
         case 'authRequest': {
@@ -54,6 +55,11 @@ var server = http.createServer((req, res) => {
             });
             break;
         }
+		case 'externalRedirect': {
+			res.setHeader('Location', result.url);
+			complete(301, undefined, 'HTTP redirect to ' + result.url);
+			break;
+		}
         default: {
             complete(500, undefined, 'Unknown result.e: ' + result.e);
             break;

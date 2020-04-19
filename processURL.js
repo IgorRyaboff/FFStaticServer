@@ -6,23 +6,30 @@ const path = require('path');
  * @param {string} cwd
  * @param {string} url
  * @param {{ login : string, password : string }|false} auth
- * @returns { { e : 'output' | 'access' | 'authRequest' | 'notFound' | 'dirTree', msg : string } }
+ * @returns { { e : 'output' | 'access' | 'authRequest' | 'notFound' | 'dirTree' | 'externalRedirect', msg : string } }
  */
 function processURL (cwd, url, auth) {
-    let config = require('./defaultConfig.json');
-    if (!url.startsWith(cwd)) return {
+    let config = JSON.parse(fs.readFileSync(path.join(path.dirname(require.main.filename), '/defaultConfig.json')).toString());
+    url = url.replace(cwd, '~').split('/').map(x => x == '~' ? cwd : x);
+    console.log('Started processing URL', url);
+    if (url[0] != cwd) return {
         e: 'access',
         msg: 'Attempted to escape CWD'
     };
-    url = url.replace(cwd, '~').split('/').map(x => x == '~' ? cwd : x);
-    console.log('Full url:', url);
     for (let i = 0; i < url.length; i++) {
         let currentPath = url.slice(0, i+1).join('/');
         console.log('Processing', currentPath);
+        if (config.redirect && config.redirect[url[i]]) {
+			let to = config.redirect[url[i]];
+			if (to.startsWith('http://') || to.startsWith('https://')) return {
+				e: 'externalRedirect',
+				url: to
+			};
+			else return processURL(cwd, path.join(cwd, config.redirect[url[i]]).split('\\').join('/'));
+		}
         if (!fs.existsSync(currentPath)) return {
             e: 'notFound'
         };
-        //if (config.redirect && config.redirect[i]) return processURL(cwd, config.redirect[i].startsWith('~/') ? path.join(cwd, config.redirect[i].replace('~/', '')) : path.join(currentPath, config.redirect[i]));
         if (fs.statSync(currentPath).isDirectory()) {
             let thisCfg = connectConfig(currentPath);
             if (thisCfg) {
@@ -59,7 +66,8 @@ function processURL (cwd, url, auth) {
         }
         else {
             if (url[i] == '.ffserve' && !config.configAccess) return {
-                e: 'access'
+                e: 'notFound',
+				msg: 'Attempted to access .ffserve file'
             }
             else return {
                 e: 'output',
