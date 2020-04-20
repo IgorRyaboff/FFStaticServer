@@ -8,14 +8,14 @@ const processURL = require('./processURL');
 const dirTree = require('./dirTree');
 
 var cwd = path.resolve(process.cwd()).split('\\').join('/');
-if (cwd[cwd.length-1] == '/') cwd = cwd.substring(0, cwd.length-1);
+if (cwd[cwd.length - 1] == '/') cwd = cwd.substring(0, cwd.length - 1);
 var sConfig = require('./defaultConfig.json').server;
 if (fs.existsSync('./.ffserve')) {
     try {
         let cfg = JSON.parse(fs.readFileSync('./.ffserve').toString()).server;
         if (cfg) for (let i in cfg) sConfig[i] = cfg[i];
     }
-    catch (_e) {}
+    catch (_e) { }
 }
 
 //Checking for sConfig errors
@@ -60,7 +60,7 @@ http.createServer((rq, rp) => {
  * @param {http.ServerResponse} res 
  */
 function processRequest(req, res) {
-    let url = path.join(cwd, req.url).split('\\').join('/').split('%20').join(' ');
+    let url = path.join(cwd, decodeURI(req.url)).split('\\').join('/');
     let auth = null;
     if (req.headers.authorization && /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/.test(req.headers.authorization.split(' ')[1])) {
         auth = Buffer.from(req.headers.authorization.split(' ')[1], 'base64').toString('ascii').split(':');
@@ -70,24 +70,24 @@ function processRequest(req, res) {
         };
         console.log('Auth:', auth);
     }
-    let complete = (code, data, msg, errorPage) => {
+    let complete = (code, data, msg, errorPage, end = true) => {
         if (errorPage) {
             console.log('Using custom error page', errorPage);
             let errPageResult = processURL(cwd, errorPage, auth);
             if (errPageResult.e == 'output') {
                 console.log('Outputting error page', errorPage);
-                res.setHeader('Content-Type', errPageResult.mime ? errPageResult.mime : mime(errPageResult.url) || 'application/octet-stream');
-                fs.readFile(errPageResult.url, 'utf-8', (err, buf) => {
-                    if (err) complete(500, err.message.split(cwd).join('~'), err.message);
-                    else complete(code, buf);
-                });
+                res.setHeader('Content-Type', result.mime ? result.mime : mime(result.url) || 'application/octet-stream');
+                let stat = fs.statSync(errPageResult.url);
+                res.setHeader('Content-Length', stat.size);
+                fs.createReadStream(errPageResult.url).pipe(res);
+                complete(200, undefined, undefined, undefined, false);
                 return;
             }
             else console.log('Cannot get custom error page:', errPageResult.e);
         }
         res.statusCode = +code;
-        res.end(data);
-		const successCodes = [ 200, 301, 304 ];
+        if (end) res.end(data);
+        const successCodes = [200, 301, 304];
         console.log(successCodes.indexOf(code) != -1 ? chalk.green(code) : chalk.red(code), `${url.replace(cwd, '~')}${msg ? ` (${msg})` : ''}`);
     };
     let result = processURL(cwd, url, auth);
@@ -108,10 +108,10 @@ function processRequest(req, res) {
         }
         case 'output': {
             res.setHeader('Content-Type', result.mime ? result.mime : mime(result.url) || 'application/octet-stream');
-            fs.readFile(result.url, 'utf-8', (err, buf) => {
-                if (err) complete(500, err.message.split(cwd).join('~'), err.message);
-                else complete(200, buf);
-            });
+            let stat = fs.statSync(url);
+            res.setHeader('Content-Length', stat.size);
+            fs.createReadStream(result.url).pipe(res);
+            complete(200, undefined, undefined, undefined, false);
             break;
         }
         case 'dirTree': {
@@ -124,10 +124,10 @@ function processRequest(req, res) {
             }
             break;
         }
-		case 'externalRedirect': {
-			res.setHeader('Location', result.url);
-			complete(301, undefined, 'HTTP redirect to ' + result.url);
-			break;
+        case 'externalRedirect': {
+            res.setHeader('Location', result.url);
+            complete(301, undefined, 'HTTP redirect to ' + result.url);
+            break;
         }
         case 'internalError': {
             complete(500, undefined, result.msg || undefined, result.url);
@@ -139,7 +139,6 @@ function processRequest(req, res) {
         }
     }
 }
-
 
 console.log('FFServe started. Current working directory:', cwd);
 console.log('HTTP port: ' + sConfig.httpPort);
