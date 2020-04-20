@@ -4,6 +4,7 @@
   "description": "Simple tool for static content serving",
   "main": "app.js",
   "scripts": {
+    "start": "node ./bin/app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

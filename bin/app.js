@@ -19,24 +19,24 @@ if (fs.existsSync('./.ffserve')) {
 }
 
 //Checking for sConfig errors
+var httpsServer = null;
 if (isNaN(sConfig.httpPort)) throw Error('Incorrect config: server.httpPort should be number');
-if (sConfig.https) {
+if (sConfig.https && sConfig.https.enabled) {
     if (isNaN(sConfig.https.port)) throw Error('Incorrect config: server.https.port should be number');
     try {
         fs.watchFile(sConfig.https.key, () => initHTTPSServer());
         sConfig.https.key = fs.readFileSync(sConfig.https.key);
         sConfig.https.cert = fs.readFileSync(sConfig.https.cert);
         sConfig.https.ca = fs.readFileSync(sConfig.https.ca);
+        initHTTPSServer();
     }
     catch (e) {
-        throw Error('Incorrect config: Error loading SSL information: ' + e.message);
+        throw Error('Error setting up HTTPS: ' + e.message);
     }
 }
 /**
  * @type {https.Server}
  */
-var httpsServer = null;
-if (sConfig.https) initHTTPSServer();
 function initHTTPSServer() {
     if (httpsServer) httpsServer.close();
     httpsServer = https.createServer({
@@ -153,4 +153,4 @@ function processRequest(req, res) {
 
 console.log('FFServe started. Current working directory:', cwd);
 console.log('HTTP port: ' + sConfig.httpPort);
-sConfig.https ? console.log('HTTPS port: ' + sConfig.https.port) : false;
+httpsServer ? console.log('HTTPS port: ' + sConfig.https.port) : console.log('HTTPS is not running');

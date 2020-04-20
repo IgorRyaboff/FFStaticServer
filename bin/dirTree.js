@@ -22,19 +22,12 @@ function dirTree(cwd, dir, showConfigFile, host) {
     let files = readdir.filter(x => stats[x] && stats[x].isFile());
     let unknowns = readdir.filter(x => !stats[x]);
     html += `<div>${dirs.length} directories, ${files.length} files, ${unknowns.length} objects are unaccessible</div><hr>`;
-    html += `<table></tbody><tr><td>Type</td><td>Name</td><td>Size</td></tr>`;
+    html += `<table></tbody><tr><td>Type</td><td>Name</td><td>Size</td><td>Permissions</td></tr>`;
     readdir = [...dirs, ...files, , ...unknowns];
     if (dir != cwd) html += `<tr><td>[D]</td><td><a href="${path.join(dir, '..').replace(cwd, '')}">..</a></td><td></td></tr>`;
     readdir.forEach(name => {
-        let stat;
-        try {
-            stat = fs.statSync(path.join(dir, name));
-        }
-        catch (e) {
-            stat = e.toString();
-        }
-        if (stat instanceof fs.Stats) html += `<tr><td>[${stat.isDirectory() ? 'D' : 'F'}]</td><td><a href="${path.join(dir, name).replace(cwd, '')}">${name}</a></td><td>${stat.isDirectory() ? '' : (stat.size + ' B')}</td></tr>`;
-        else html += `<tr><td>[?]</td><td>${name} (unaccessible)</td><td>?</td></tr>`;
+        if (stats[name]) html += `<tr><td>[${stats[name].isDirectory() ? 'D' : 'F'}]</td><td><a href="${path.join(dir, name).replace(cwd, '')}">${name}</a></td><td>${stats[name].isDirectory() ? '' : (stats[name].size + ' B')}</td><td>${stats[name].mode}</td></tr>`;
+        else html += `<tr><td>[?]</td><td>${name}</td><td>?</td><td>?</td></tr>`;
     });
     html += `</tbody></table><hr><div style="font-size:smaller">Powered by <a href="https://github.com/IgorRyaboff/FFServe">FFServe</a></div>`;
     return html;
