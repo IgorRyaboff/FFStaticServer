@@ -102,7 +102,7 @@ function processRequest(req, res) {
         console.log(successCodes.indexOf(code) != -1 ? chalk.green(code) : chalk.red(code), `${url.replace(cwd, '~')}${msg ? ` (${msg})` : ''}`);
     };
     let result = processURL(cwd, url, auth, sConfig.verboseLogging);
-    if (sConfig.verboseLogging) console.log('Got result code', result.e);
+    if (sConfig.verboseLogging) console.log('Got result', result);
     switch (result.e) {
         case 'access': {
             complete(403, undefined, result.msg || undefined, result.url);
@@ -118,8 +118,8 @@ function processRequest(req, res) {
             break;
         }
         case 'output': {
-            res.setHeader('Content-Type', result.mime ? result.mime : mime(result.url) || 'application/octet-stream');
-            let stat = fs.statSync(url);
+            res.setHeader('Content-Type', (result.mime ? (result.mime + '; charset=utf-8') : (mime(result.url) + '; charset=utf-8')) || 'application/octet-stream');
+            let stat = fs.statSync(result.url);
             res.setHeader('Content-Length', stat.size);
             fs.createReadStream(result.url).pipe(res);
             complete(200, undefined, undefined, undefined, false);

@@ -11,7 +11,7 @@ const path = require('path');
  */
 function processURL (cwd, url, auth, verboseLogging) {
     let config = JSON.parse(fs.readFileSync(path.join(path.dirname(require.main.filename), '/defaultConfig.json')).toString());
-    url = url.split('\\').join('/').replace(cwd, '~').split('/').map(x => x == '~' ? cwd : x);
+    url = url.split('\\').join('/').replace(cwd, '~').split('/').map(x => x == '~' ? cwd : x).filter(x => !!x);
     if (verboseLogging) console.log('Started processing URL', url);
     if (url[0] != cwd) return {
         e: 'access',
@@ -22,21 +22,12 @@ function processURL (cwd, url, auth, verboseLogging) {
         let currentPath = url.slice(0, i+1).join('/');
         if (verboseLogging) console.log('Processing', currentPath);
         if (config.redirect && config.redirect[url[i]]) {
-            console.log('gGONNA REDIRECT');
             let to = config.redirect[url[i]];
 			if (to.startsWith('http://') || to.startsWith('https://')) return {
 				e: 'externalRedirect',
 				url: to
 			};
-			else {
-                let newURL = path.join(cwd, config.redirect[url[i]]).split('\\').join('/');
-                if (newURL == currentPath) return {
-                    e: 'internalError',
-                    msg: 'Invalid config: recursive redirect at ' + newURL,
-                    url: config.errorPages && config.errorPages.internalError ? path.join(currentPath, config.errorPages.internalError) : undefined
-                }
-                else return processURL(cwd, path.join(newURL).split('\\').join('/'));
-            }
+			else return localRedirect(to, currentPath, cwd, auth, verboseLogging);
 		}
         if (!fs.existsSync(currentPath)) return {
             e: 'notFound',
@@ -77,7 +68,8 @@ function processURL (cwd, url, auth, verboseLogging) {
                 msg: '.ffserve > access is false'
             }
             if (!url[i+1]) {
-                if (config.showDirectoryTree) return {
+                if (config.index) return localRedirect(path.join(currentPath, config.index), currentPath, cwd, auth, verboseLogging);
+                else if (config.showDirectoryTree) return {
                     e: 'dirTree',
                     url: currentPath
                 };
@@ -114,4 +106,15 @@ function connectConfig(url) {
         }
     }
     else return false;
+}
+
+function localRedirect(to, currentPath, cwd, auth, verboseLogging) {
+    if (verboseLogging) console.log('Starting local redirect to', to);
+    let newURL = path.join(to).split('\\').join('/');
+    if (newURL == currentPath) return {
+        e: 'internalError',
+        msg: 'Invalid config: recursive redirect at ' + newURL,
+        url: config.errorPages && config.errorPages.internalError ? path.join(currentPath, config.errorPages.internalError) : undefined
+    }
+    else return processURL(cwd, path.join(newURL).split('\\').join('/'), auth, verboseLogging);
 }
