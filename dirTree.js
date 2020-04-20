@@ -36,7 +36,7 @@ function dirTree(cwd, dir, showConfigFile, host) {
         if (stat instanceof fs.Stats) html += `<tr><td>[${stat.isDirectory() ? 'D' : 'F'}]</td><td><a href="${path.join(dir, name).replace(cwd, '')}">${name}</a></td><td>${stat.isDirectory() ? '' : (stat.size + ' B')}</td></tr>`;
         else html += `<tr><td>[?]</td><td>${name} (unaccessible)</td><td>?</td></tr>`;
     });
-    html += `</tbody></table><hr><div style="font-size:smaller">Powered by <a href="https://github.com/IgorRyaboff/FFServe">FFServe</a> ${require('./package.json').version}</div>`;
+    html += `</tbody></table><hr><div style="font-size:smaller">Powered by <a href="https://github.com/IgorRyaboff/FFServe">FFServe</a></div>`;
     return html;
 }
 module.exports = dirTree;

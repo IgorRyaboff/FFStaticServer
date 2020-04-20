@@ -6,13 +6,13 @@ const path = require('path');
  * @param {string} cwd
  * @param {string} url
  * @param {{ login : string, password : string }|false} auth
+ * @param {boolean} verboseLogging
  * @returns { { e : 'output' | 'access' | 'authRequest' | 'notFound' | 'dirTree' | 'externalRedirect' | 'internalError', msg : string } }
  */
-function processURL (cwd, url, auth) {
-    console.log(url);
+function processURL (cwd, url, auth, verboseLogging) {
     let config = JSON.parse(fs.readFileSync(path.join(path.dirname(require.main.filename), '/defaultConfig.json')).toString());
     url = url.split('\\').join('/').replace(cwd, '~').split('/').map(x => x == '~' ? cwd : x);
-    console.log('Started processing URL', url);
+    if (verboseLogging) console.log('Started processing URL', url);
     if (url[0] != cwd) return {
         e: 'access',
         msg: 'Attempted to escape CWD',
@@ -20,8 +20,9 @@ function processURL (cwd, url, auth) {
     };
     for (let i = 0; i < url.length; i++) {
         let currentPath = url.slice(0, i+1).join('/');
-        console.log('Processing', currentPath);
+        if (verboseLogging) console.log('Processing', currentPath);
         if (config.redirect && config.redirect[url[i]]) {
+            console.log('gGONNA REDIRECT');
             let to = config.redirect[url[i]];
 			if (to.startsWith('http://') || to.startsWith('https://')) return {
 				e: 'externalRedirect',
@@ -41,6 +42,13 @@ function processURL (cwd, url, auth) {
             e: 'notFound',
             url: config.errorPages && config.errorPages.notFound ? path.join(currentPath, config.errorPages.notFound) : undefined
         };
+        let stat;
+        try {
+            stat = fs.statSync(currentPath);
+        }
+        catch(e) {
+            if (e.code == 'EPERM') return { e: 'access' };
+        }
         if (fs.statSync(currentPath).isDirectory()) {
             let thisCfg = connectConfig(currentPath);
             if (thisCfg) {
@@ -56,8 +64,8 @@ function processURL (cwd, url, auth) {
                 }
                 config.redirect = thisCfg.redirect;
                 config.mime = thisCfg.mime;
-                console.log('Custom config connected', thisCfg);
-                //console.log('Working with config', config);
+                if (verboseLogging) console.log('Custom config connected', thisCfg);
+                if (verboseLogging) console.log('Working with config', config);
             }
             if (config.auth) {
                 if (!auth || !config.auth.some(x => x.login == auth.login && x.password == auth.password)) return {

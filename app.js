@@ -68,14 +68,15 @@ function processRequest(req, res) {
             login: auth[0],
             password: auth[1]
         };
-        console.log('Auth:', auth);
+        if (sConfig.verboseLogging) console.log('Auth:', auth);
     }
     let complete = (code, data, msg, errorPage, end = true) => {
+        const successCodes = [200, 301, 304];
         if (errorPage) {
-            console.log('Using custom error page', errorPage);
+            if (sConfig.verboseLogging) console.log('Using custom error page', errorPage);
             let errPageResult = processURL(cwd, errorPage, auth);
             if (errPageResult.e == 'output') {
-                console.log('Outputting error page', errorPage);
+                if (sConfig.verboseLogging) console.log('Outputting error page', errorPage);
                 res.setHeader('Content-Type', result.mime ? result.mime : mime(result.url) || 'application/octet-stream');
                 let stat = fs.statSync(errPageResult.url);
                 res.setHeader('Content-Length', stat.size);
@@ -83,15 +84,25 @@ function processRequest(req, res) {
                 complete(200, undefined, undefined, undefined, false);
                 return;
             }
-            else console.log('Cannot get custom error page:', errPageResult.e);
+            else if (sConfig.verboseLogging) console.log('Cannot get custom error page:', errPageResult.e);
+        }
+        else if (successCodes.indexOf(code) == -1 && !data) {
+            let codeDescr = {
+                403: ['Forbidden', `You don't have permission to access URL ${decodeURI(req.url)} on this server`],
+                404: ['Not Found', `The requested URL ${decodeURI(req.url)} was not found on this server`],
+                500: ['Internal Error', `Something went wrong on the server. If you're its administrator, see log files`]
+            }
+            if (codeDescr[code]) {
+                res.setHeader('Content-Type', 'text/html');
+                data = `<meta charset="utf-8"/><h1>${codeDescr[code][0]}</h1><div>${codeDescr[code][1]}</div><hr><div style="font-size:smaller">Powered by <a href="https://github.com/IgorRyaboff/FFServe">FFServe</a></div>`
+            }
         }
         res.statusCode = +code;
         if (end) res.end(data);
-        const successCodes = [200, 301, 304];
         console.log(successCodes.indexOf(code) != -1 ? chalk.green(code) : chalk.red(code), `${url.replace(cwd, '~')}${msg ? ` (${msg})` : ''}`);
     };
-    let result = processURL(cwd, url, auth);
-    console.log('Got result code', result.e);
+    let result = processURL(cwd, url, auth, sConfig.verboseLogging);
+    if (sConfig.verboseLogging) console.log('Got result code', result.e);
     switch (result.e) {
         case 'access': {
             complete(403, undefined, result.msg || undefined, result.url);

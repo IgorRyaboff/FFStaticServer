@@ -12,6 +12,7 @@
             "key": "/etc/letsencrypt/archive/example.com/privkey1.pem",
             "cert": "/etc/letsencrypt/archive/example.com/fullchain1.pem",
             "ca": "/etc/letsencrypt/archive/example.com/chain1.pem"
-        }
+        },
+        "verboseLogging": false
     }
 }
