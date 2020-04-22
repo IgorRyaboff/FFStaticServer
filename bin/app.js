@@ -51,7 +51,8 @@ function initHTTPSServer() {
 http.createServer((rq, rp) => {
     if (!sConfig.https || !sConfig.https.enabled || sConfig.https.allowInsecureRequests) processRequest(rq, rp);
     else {
-        rp.writeHead(301, { "Location": "https://" + rq.headers['host'] + rq.url }).end();
+        rp.writeHead(301, { "Location": "https://" + rq.headers['host'] + rq.url })
+        rp.end();
     }
 }).listen(sConfig.httpPort);
 
