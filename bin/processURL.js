@@ -10,7 +10,7 @@ const path = require('path');
  * @returns { { e : 'output' | 'access' | 'authRequest' | 'notFound' | 'dirTree' | 'externalRedirect' | 'internalError', msg : string } }
  */
 function processURL (cwd, url, auth, verboseLogging) {
-    let config = JSON.parse(fs.readFileSync(path.join(path.dirname(require.main.filename), '/defaultConfig.json')).toString());
+    let config = JSON.parse(fs.readFileSync(path.join(__dirname, '/defaultConfig.json')).toString());
     url = url.split('\\').join('/').replace(cwd, '~').split('/').map(x => x == '~' ? cwd : x).filter(x => !!x);
     if (verboseLogging) console.log('Started processing URL', url);
     if (url[0] != cwd) return {

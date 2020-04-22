@@ -31,9 +31,10 @@ if (sConfig.https && sConfig.https.enabled) {
         initHTTPSServer();
     }
     catch (e) {
-        throw Error('Error setting up HTTPS: ' + e.message);
+        console.error('Error setting up HTTPS: ' + e.message);
     }
 }
+
 /**
  * @type {https.Server}
  */
@@ -48,7 +49,7 @@ function initHTTPSServer() {
 }
 
 http.createServer((rq, rp) => {
-    if (!sConfig.https || sConfig.https.allowInsecureRequests) processRequest(rq, rp);
+    if (!sConfig.https || !sConfig.https.enabled || sConfig.https.allowInsecureRequests) processRequest(rq, rp);
     else {
         rp.writeHead(301, { "Location": "https://" + rq.headers['host'] + rq.url }).end();
     }
@@ -61,6 +62,7 @@ http.createServer((rq, rp) => {
  */
 function processRequest(req, res) {
     let url = path.join(cwd, decodeURI(req.url)).split('\\').join('/');
+    let ifModifiedSince = !isNaN(req.headers['if-modified-since']) ? +req.headers['if-modified-since'] : 0;
     let auth = null;
     if (req.headers.authorization && /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/.test(req.headers.authorization.split(' ')[1])) {
         auth = Buffer.from(req.headers.authorization.split(' ')[1], 'base64').toString('ascii').split(':');
@@ -77,11 +79,7 @@ function processRequest(req, res) {
             let errPageResult = processURL(cwd, errorPage, auth);
             if (errPageResult.e == 'output') {
                 if (sConfig.verboseLogging) console.log('Outputting error page', errorPage);
-                res.setHeader('Content-Type', result.mime ? result.mime : mime(result.url) || 'application/octet-stream');
-                let stat = fs.statSync(errPageResult.url);
-                res.setHeader('Content-Length', stat.size);
-                fs.createReadStream(errPageResult.url).pipe(res);
-                complete(200, undefined, undefined, undefined, false);
+                outputFileContent(errPageResult, res, ifModifiedSince, complete);
                 return;
             }
             else if (sConfig.verboseLogging) console.log('Cannot get custom error page:', errPageResult.e);
@@ -118,16 +116,13 @@ function processRequest(req, res) {
             break;
         }
         case 'output': {
-            res.setHeader('Content-Type', (result.mime ? (result.mime + '; charset=utf-8') : (mime(result.url) + '; charset=utf-8')) || 'application/octet-stream');
-            let stat = fs.statSync(result.url);
-            res.setHeader('Content-Length', stat.size);
-            fs.createReadStream(result.url).pipe(res);
-            complete(200, undefined, undefined, undefined, false);
+            outputFileContent(result, res, ifModifiedSince, complete);
             break;
         }
         case 'dirTree': {
             try {
                 res.setHeader('Content-type', 'text/html');
+                res.setHeader('Cache-Control', 'no-cache');
                 complete(200, dirTree(cwd, result.url, result.showConfig, req.headers.host), 'Directory tree shown');
             }
             catch (err) {
@@ -148,6 +143,25 @@ function processRequest(req, res) {
             complete(500, undefined, 'Unknown result.e: ' + result.e);
             break;
         }
+    }
+}
+
+/**
+ * 
+ * @param {str} url
+ * @param {http.ServerResponse} response
+ * @param {number} ifModifiedSince
+ * @param {function} complete
+ */
+function outputFileContent(result, response, ifModifiedSince, complete) {
+    let stat = fs.statSync(result.url);
+    if (+stat.mtime == ifModifiedSince) return complete(304);
+    else {
+        response.setHeader('Content-Type', (result.mime ? (result.mime + '; charset=utf-8') : (mime(result.url) + '; charset=utf-8')) || 'application/octet-stream');
+        response.setHeader('Content-Length', stat.size);
+        response.setHeader('Last-Modified', +stat.mtime);
+        fs.createReadStream(result.url).pipe(response);
+        complete(200, undefined, undefined, undefined, false);
     }
 }
 
