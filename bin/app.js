@@ -62,6 +62,7 @@ http.createServer((rq, rp) => {
  */
 function processRequest(req, res) {
     let url = path.join(cwd, decodeURI(req.url)).split('\\').join('/');
+    url = url.substr(0, url.indexOf('?') == -1 ? 10000 : url.indexOf('?'));
     let ifModifiedSince = !isNaN(req.headers['if-modified-since']) ? +req.headers['if-modified-since'] : 0;
     let auth = null;
     if (req.headers.authorization && /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/.test(req.headers.authorization.split(' ')[1])) {
