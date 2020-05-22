@@ -22,13 +22,16 @@ if (fs.existsSync('./.ffserve')) {
 var httpsServer = null;
 if (isNaN(sConfig.httpPort)) throw Error('Incorrect config: server.httpPort should be number');
 if (sConfig.https && sConfig.https.enabled) {
-    if (isNaN(sConfig.https.port)) throw Error('Incorrect config: server.https.port should be number');
     try {
-        fs.watchFile(sConfig.https.key, () => initHTTPSServer());
-        sConfig.https.key = fs.readFileSync(sConfig.https.key);
-        sConfig.https.cert = fs.readFileSync(sConfig.https.cert);
-        sConfig.https.ca = fs.readFileSync(sConfig.https.ca);
+        if (isNaN(sConfig.https.port)) throw Error('Incorrect config: server.https.port should be number');
+        let key = fs.readFileSync(sConfig.https.key);
+        let cert = fs.readFileSync(sConfig.https.cert);
+        let ca = fs.readFileSync(sConfig.https.ca);
+        sConfig.https.key = key;
+        sConfig.https.cert = cert;
+        sConfig.https.ca = ca;
         initHTTPSServer();
+        fs.watchFile(sConfig.https.key, () => initHTTPSServer());
     }
     catch (e) {
         console.error('Error setting up HTTPS: ' + e.message);
@@ -49,7 +52,7 @@ function initHTTPSServer() {
 }
 
 http.createServer((rq, rp) => {
-    if (!sConfig.https || !sConfig.https.enabled || sConfig.https.allowInsecureRequests) processRequest(rq, rp);
+    if (!httpsServer || sConfig.https.allowInsecureRequests) processRequest(rq, rp);
     else {
         rp.writeHead(301, { "Location": "https://" + rq.headers['host'] + rq.url })
         rp.end();
@@ -57,9 +60,9 @@ http.createServer((rq, rp) => {
 }).listen(sConfig.httpPort);
 
 /**
- * 
- * @param {http.IncomingMessage} req 
- * @param {http.ServerResponse} res 
+ *
+ * @param {http.IncomingMessage} req
+ * @param {http.ServerResponse} res
  */
 function processRequest(req, res) {
     let url = path.join(cwd, decodeURI(req.url)).split('\\').join('/');
@@ -149,7 +152,7 @@ function processRequest(req, res) {
 }
 
 /**
- * 
+ *
  * @param {str} url
  * @param {http.ServerResponse} response
  * @param {number} ifModifiedSince
