@@ -64,7 +64,13 @@ http.createServer((rq, rp) => {
  * @param {http.IncomingMessage} req
  * @param {http.ServerResponse} res
  */
-function processRequest(req, res) {
+function processRequest(req, res, postData) {
+    if (req.method == 'POST')  {
+        let data = '';
+        req.on('data', chunk => data += chunk.toString());
+        req.on('end', () => processRequest(req, res, data));
+        return;
+    }
     let url = path.join(cwd, decodeURI(req.url)).split('\\').join('/');
     url = url.substr(0, url.indexOf('?') == -1 ? 10000 : url.indexOf('?'));
     let ifModifiedSince = !isNaN(req.headers['if-modified-since']) ? +req.headers['if-modified-since'] : 0;
@@ -144,6 +150,19 @@ function processRequest(req, res) {
             complete(500, undefined, result.msg || undefined, result.url);
             break;
         }
+        case 'forward': {
+            console.log('forwarding to ' + result.to);
+            let req = ( result.to.startsWith('https://') ? https : http ).request(result.to, {
+                method: postData ? 'POST' : 'GET'
+            }, res => {
+                console.log('completed ' + result.to);
+                let data = '';
+                res.on('data', chunk => data += chunk.toString());
+                res.on('end', () => complete(res.statusCode, data, 'forwarded to ' + result.to));
+            });
+            if (postData) req.write(postData);
+            break;
+        }
         default: {
             complete(500, undefined, 'Unknown result.e: ' + result.e);
             break;
@@ -160,11 +179,21 @@ function processRequest(req, res) {
  */
 function outputFileContent(result, response, ifModifiedSince, complete) {
     let stat = fs.statSync(result.url);
-    if (+stat.mtime == ifModifiedSince) return complete(304);
+    if (+stat.mtime == ifModifiedSince && result.cachingType == 'mtime') return complete(304);
     else {
         response.setHeader('Content-Type', (result.mime ? (result.mime + '; charset=utf-8') : (mime(result.url) + '; charset=utf-8')) || 'application/octet-stream');
         response.setHeader('Content-Length', stat.size);
-        response.setHeader('Last-Modified', +stat.mtime);
+        switch (result.cachingType) {
+            case 'none': break;
+            case 'permanent': {
+                response.setHeader('Cache-Control', 'max-age=2629743'); // ~ 1 month
+                break;
+            }
+            default: case 'mtime': {
+                response.setHeader('Last-Modified', +stat.mtime);
+                break;
+            }
+        }
         fs.createReadStream(result.url).pipe(response);
         complete(200, undefined, undefined, undefined, false);
     }

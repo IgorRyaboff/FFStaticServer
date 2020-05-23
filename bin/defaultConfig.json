@@ -5,7 +5,7 @@
     "redirect": false,
     "access": true,
     "server": {
-        "httpPort": 80,
+        "httpPort": 801,
         "https": {
             "enabled": false,
             "allowInsecureRequests": false,

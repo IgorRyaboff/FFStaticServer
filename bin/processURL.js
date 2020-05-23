@@ -1,5 +1,7 @@
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
+const https = require('https');
 
 /**
  * 
@@ -7,7 +9,7 @@ const path = require('path');
  * @param {string} url
  * @param {{ login : string, password : string }|false} auth
  * @param {boolean} verboseLogging
- * @returns { { e : 'output' | 'access' | 'authRequest' | 'notFound' | 'dirTree' | 'externalRedirect' | 'internalError', msg : string } }
+ * @returns { { e : 'output' | 'access' | 'authRequest' | 'notFound' | 'dirTree' | 'externalRedirect' | 'internalError' | 'forward', msg : string } }
  */
 function processURL (cwd, url, auth, verboseLogging) {
     let config = JSON.parse(fs.readFileSync(path.join(__dirname, '/defaultConfig.json')).toString());
@@ -21,6 +23,7 @@ function processURL (cwd, url, auth, verboseLogging) {
     for (let i = 0; i < url.length; i++) {
         let currentPath = url.slice(0, i+1).join('/');
         if (verboseLogging) console.log('Processing', currentPath);
+
         if (config.redirect && config.redirect[url[i]]) {
             let to = config.redirect[url[i]];
 			if (to.startsWith('http://') || to.startsWith('https://')) return {
@@ -28,7 +31,17 @@ function processURL (cwd, url, auth, verboseLogging) {
 				url: to
 			};
 			else return localRedirect(to, currentPath, cwd, auth, verboseLogging);
+        }
+        
+        
+        if (config.forward && config.forward[url[i]]) {
+            let to = config.forward[url[i]];
+            return {
+                e: 'forward',
+                to: to
+            }
 		}
+
         if (!fs.existsSync(currentPath)) return {
             e: 'notFound',
             url: config.errorPages && config.errorPages.notFound ? path.join(currentPath, config.errorPages.notFound) : undefined
@@ -88,7 +101,8 @@ function processURL (cwd, url, auth, verboseLogging) {
             else return {
                 e: 'output',
                 url: currentPath,
-                mime: config.mime && config.mime[url[i]] ? config.mime[url[i]] : undefined
+                mime: config.mime && config.mime[url[i]] ? config.mime[url[i]] : undefined,
+                cachingType: config.cachingType ? config.cachingType : 'mtime'
             }
             break;
         }
