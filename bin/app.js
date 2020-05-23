@@ -152,8 +152,9 @@ function processRequest(req, res, postData) {
         }
         case 'forward': {
             console.log('forwarding to ' + result.to);
-            let req = ( result.to.startsWith('https://') ? https : http ).request(result.to, {
-                method: postData ? 'POST' : 'GET'
+            let req = ( result.to.startsWith('https://') ? https : http ).request({
+                method: postData ? 'POST' : 'GET',
+                url: result.to
             }, res => {
                 console.log('completed ' + result.to);
                 let data = '';
