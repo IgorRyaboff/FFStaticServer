@@ -51,7 +51,7 @@ function initHTTPSServer() {
     console.log('Started HTTPS server');
 }
 
-http.createServer((rq, rp) => {
+if (sConfig.httpPort) http.createServer((rq, rp) => {
     if (!httpsServer || sConfig.https.allowInsecureRequests) processRequest(rq, rp);
     else {
         rp.writeHead(301, { "Location": "https://" + rq.headers['host'] + rq.url })
@@ -64,13 +64,7 @@ http.createServer((rq, rp) => {
  * @param {http.IncomingMessage} req
  * @param {http.ServerResponse} res
  */
-function processRequest(req, res, postData) {
-    if (req.method == 'POST')  {
-        let data = '';
-        req.on('data', chunk => data += chunk.toString());
-        req.on('end', () => processRequest(req, res, data));
-        return;
-    }
+function processRequest(req, res) {
     let url = path.join(cwd, decodeURI(req.url)).split('\\').join('/');
     url = url.substr(0, url.indexOf('?') == -1 ? 10000 : url.indexOf('?'));
     let ifModifiedSince = !isNaN(req.headers['if-modified-since']) ? +req.headers['if-modified-since'] : 0;
@@ -150,20 +144,6 @@ function processRequest(req, res, postData) {
             complete(500, undefined, result.msg || undefined, result.url);
             break;
         }
-        case 'forward': {
-            console.log('forwarding to ' + result.to);
-            let req = ( result.to.startsWith('https://') ? https : http ).request({
-                method: postData ? 'POST' : 'GET',
-                url: result.to
-            }, res => {
-                console.log('completed ' + result.to);
-                let data = '';
-                res.on('data', chunk => data += chunk.toString());
-                res.on('end', () => complete(res.statusCode, data, 'forwarded to ' + result.to));
-            });
-            if (postData) req.write(postData);
-            break;
-        }
         default: {
             complete(500, undefined, 'Unknown result.e: ' + result.e);
             break;
@@ -201,5 +181,5 @@ function outputFileContent(result, response, ifModifiedSince, complete) {
 }
 
 console.log('FFServe started. Current working directory:', cwd);
-console.log('HTTP port: ' + sConfig.httpPort);
+sConfig.httpPort ? console.log('HTTP port: ' + sConfig.httpPort) : console.log('HTTP is not running');
 httpsServer ? console.log('HTTPS port: ' + sConfig.https.port) : console.log('HTTPS is not running');

@@ -27,7 +27,8 @@
     "fs": "0.0.1-security",
     "http": "0.0.1-security",
     "https": "^1.0.0",
-    "mime-types": "^2.1.26"
+    "mime-types": "^2.1.26",
+    "request": "^2.88.2"
   },
   "devDependencies": {
     "mocha": "^7.1.1",
