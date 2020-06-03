@@ -8,6 +8,7 @@ const processURL = require('./processURL');
 const dirTree = require('./dirTree');
 
 var cwd = path.resolve(process.cwd()).split('\\').join('/');
+console.log('FFServe started. Current working directory:', cwd);
 if (cwd[cwd.length - 1] == '/') cwd = cwd.substring(0, cwd.length - 1);
 var sConfig = require('./defaultConfig.json').server;
 if (fs.existsSync('./.ffserve')) {
@@ -51,13 +52,26 @@ function initHTTPSServer() {
     console.log('Started HTTPS server');
 }
 
-if (sConfig.httpPort) http.createServer((rq, rp) => {
-    if (!httpsServer || sConfig.https.allowInsecureRequests) processRequest(rq, rp);
-    else {
-        rp.writeHead(301, { "Location": "https://" + rq.headers['host'] + rq.url })
-        rp.end();
+var httpServer;
+function initHTTPServer() {
+    if (httpServer) httpServer.close();
+    httpServer = http.createServer((rq, rp) => {
+        if (!httpsServer || sConfig.https.allowInsecureRequests) processRequest(rq, rp);
+        else {
+            rp.writeHead(301, { "Location": "https://" + rq.headers['host'] + rq.url })
+            rp.end();
+        }
+    }).listen(sConfig.httpPort).on('error', e => {
+        console.error('Error setting up HTTP: ' + e);
+    }).on('listening', () => console.log('Started HTTP server'));
+}
+
+if (sConfig.httpPort) {
+    try { initHTTPServer() }
+    catch (e) {
+        console.error('Error setting up HTTP: ' + e.message);
     }
-}).listen(sConfig.httpPort);
+}
 
 /**
  *
@@ -180,6 +194,6 @@ function outputFileContent(result, response, ifModifiedSince, complete) {
     }
 }
 
-console.log('FFServe started. Current working directory:', cwd);
-sConfig.httpPort ? console.log('HTTP port: ' + sConfig.httpPort) : console.log('HTTP is not running');
-httpsServer ? console.log('HTTPS port: ' + sConfig.https.port) : console.log('HTTPS is not running');
+setInterval(() => {
+    //This interval is very important - if both HTTP and HTTPS server didn't start, process would not exit
+});
