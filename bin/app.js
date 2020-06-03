@@ -196,4 +196,4 @@ function outputFileContent(result, response, ifModifiedSince, complete) {
 
 setInterval(() => {
     //This interval is very important - if both HTTP and HTTPS server didn't start, process would not exit
-});
+}, (2**32 / 2) - 1);
