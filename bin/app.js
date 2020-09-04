@@ -92,6 +92,7 @@ function processRequest(req, res) {
         if (sConfig.verboseLogging) console.log('Auth:', auth);
     }
     let complete = (code, data, msg, errorPage, end = true) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
         const successCodes = [200, 301, 304];
         if (errorPage) {
             if (sConfig.verboseLogging) console.log('Using custom error page', errorPage);
