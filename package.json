@@ -1,14 +1,11 @@
 {
     "name": "ffstaticserver",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "Simple web server for static content serving",
     "main": "bin/app.js",
     "bin": {
         "ffstaticserver": "bin/app.js",
         "ffserve": "bin/app.js"
-    },
-    "engines": {
-        "node": ">=6"
     },
     "scripts": {
         "start": "node ./bin/app.js",
