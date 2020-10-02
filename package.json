@@ -7,6 +7,9 @@
         "ffstaticserver": "bin/app.js",
         "ffserve": "bin/app.js"
     },
+    "engines": {
+        "node": ">=6"
+    },
     "scripts": {
         "start": "node ./bin/app.js",
         "test": "mocha bin/*.test.js"
