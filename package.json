@@ -1,7 +1,7 @@
 {
-  "name": "ffserve",
+  "name": "ffstaticserver",
   "version": "1.0.0",
-  "description": "Simple tool for static content serving",
+  "description": "Simple web server for static content serving",
   "main": "app.js",
   "scripts": {
     "start": "node ./bin/app.js",
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/IgorRyaboff/FFServe.git"
+    "url": "git+https://github.com/IgorRyaboff/FFStaticServer.git"
   },
   "keywords": [
     "http",
@@ -19,9 +19,9 @@
   "author": "Igor Ryabov",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/IgorRyaboff/FFServe/issues"
+    "url": "https://github.com/IgorRyaboff/FFStaticServer/issues"
   },
-  "homepage": "https://github.com/IgorRyaboff/FFServe#readme",
+  "homepage": "https://github.com/IgorRyaboff/FFStaticServer#readme",
   "dependencies": {
     "chalk": "^4.0.0",
     "fs": "0.0.1-security",
